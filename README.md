@@ -1,0 +1,1 @@
+# SOC-EDR-PROJECT-Limacharlie-VT-Tines-Slack-and-Email-
