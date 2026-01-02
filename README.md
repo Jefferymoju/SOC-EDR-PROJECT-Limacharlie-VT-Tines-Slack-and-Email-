@@ -2,144 +2,122 @@
 
 This project demonstrates the implementation of an end-to-end Security Operations Center (SOC) automation pipeline. The workflow integrates LimaCharlie EDR to ingest telemetry from a Linux Ubuntu endpoint, which is then orchestrated by Tines SOAR. The automation logic performs real-time threat intelligence enrichment via the VirusTotal API, enabling the system to take automated remediation actions (such as host isolation) or alert SOC analysts via Slack for manual intervention.
 
+## ⚠️ Lab Scope & Assumptions
+This lab intentionally uses simulated attack techniques in an isolated environment. Some detections (e.g., custom LaZagne builds or local administrative tools) may return unknown threat intelligence results from VirusTotal. This behavior is expected and reflects real-world SOC challenges, where not all malicious activity is immediately classified by external threat intelligence sources.
+
+## 🧠 Skills Demonstrated
+- **EDR Telemetry Analysis:** Linux process and network monitoring.
+- **Detection Engineering:** Engineering custom D&R rules in LimaCharlie.
+- **SOAR Orchestration:** Playbook design and complex branching logic in Tines.
+- **Threat Intelligence:** Real-time API enrichment via VirusTotal.
+- **Incident Response:** Automated containment (host isolation) and analyst escalation.
+- **Error Handling:** Managing API 404/401 statuses and False Positive mitigation.
+
 ## 🗺️ Project Architecture & Flow
-The diagram below illustrates the flow of events, from the initial detection of an event on the Ubuntu server (endpoint) to the final remediation action:
+The diagram below illustrates the flow of events, from the initial detection on the Ubuntu server to the final remediation action:
 
 *(Click to zoom)*
 ![Tines Workflow Diagram](images/tines_story_v2.png)
 
+---
+
 ### 🛠️ Project Evolution and Iterative Development
-The project was developed in two different phases, evolving from a manual response model to an automated, intelligence-driven architecture.
+The project evolved through two distinct phases to move from manual intervention to intelligence-driven automation.
 
 #### Iteration 1: Baseline Connectivity and Manual Response
-Initially, the project was meant to detect **LaZagne** (a credential dumping tool) on the Ubuntu server (endpoint). The workflow established a baseline where telemetry was sent from **LimaCharlie** to **Tines**. Upon detection, the SOC was alerted via Slack and Email with a link to the **Detection**. An analyst had to manually review the alert and click "Yes" or "No" on the prompt/site within the Tines story (playbook), which then triggered the respective response and sent a confirmation message back to the team.
+Initially, the workflow established a baseline where telemetry for **LaZagne** was sent from LimaCharlie to Tines. The SOC was alerted via Slack and Email with a link to a manual prompt. An analyst had to manually click "Yes" or "No" to trigger a response.
 
-#### Iteration 2: More Detection Rules and VT (VirusTotal) Enrichment
-I expanded the scope of detection to include **Nmap Scans** and **Unauthorized User Creation**. I then integrated the **VirusTotal (VT) API** directly into the Tines workflow to automate the decision-making process. This shifted the SOC's role from "reviewing every single alert and being the only one to isolate" to "managing exceptions," significantly reducing response times for known threats.
+#### Iteration 2: Advanced Detection & VT Enrichment
+I expanded the scope to include **Nmap Scans** and **Unauthorized User Creation**, integrating the **VirusTotal API** to automate the decision-making process. This shifted the SOC's role from reviewing every alert to "managing exceptions," significantly reducing response times.
+
+---
 
 ### 🧠 The Logic Flow
-With the integration of the VirusTotal API, the Tines workflow now follows a three-tier logic check to determine the remediation path:
+The Tines workflow follows a three-tier logic check to determine the remediation path:
 
 * **Tier 1: Known Malicious (VT Score > 3)**
-    * **Action:** Immediate **Auto-Isolation** of the endpoint via the LimaCharlie API.
-    * **Notification:** The SOC receives a Slack alert confirming the threat was blocked and the machine is secured.
+    * **Action:** Immediate **Auto-Isolation** via LimaCharlie API.
+    * **Notification:** Slack alert confirming the threat was blocked and the machine is secured.
 * **Tier 2: Unknown/Suspicious (Status 404)**
-    * **Action:** No automatic action is taken to prevent False Positives.
-    * **Notification:** The SOC is notified of "Unknown/Suspicious" telemetry. The analyst must investigate and use the **Interactive Prompt/Page** to manually decide on isolation.
-* **Tier 3: Known Clean / Administrative Tools (VT Score = 0)**
+    * **Action:** No automatic action (Prevents False Positives).
+    * **Notification:** Analyst is notified via Slack and must use the **Interactive Page** to decide on isolation.
+* **Tier 3: Known Clean (VT Score = 0)**
     * **Action:** No isolation.
-    * **Notification:** The SOC is alerted with a "Clean" status for visibility. 
-    * **Fallback:** If the analyst determines the activity is a **Zero-Day** or **False Negative** upon manual review, they retain the option to trigger isolation via the manual prompt.
+    * **Notification:** Logged as "Clean" for visibility.
+
+---
 
 ## 🔍 Detection Walkthrough: Anatomy of an Alert
 
-To demonstrate the end-to-end pipeline, I developed and tested three custom detection rules. This section illustrates how these specific events travel from the endpoint to the SOC.
-
 ### 1. The Trigger & EDR Ingestion
-I simulated three distinct attack vectors on the Ubuntu endpoint to ensure the LimaCharlie agent was capturing the necessary telemetry:
-* **Network Reconnaissance:** Executed `sudo nmap -A -T4 localhost`.
-* **Credential Dumping:** Executed the **LaZagne** binary `sudo python3 laZagne.py all`.
-* **Persistence:** Created a backdoor account using the `sudo useradd -m hacker-backdoor` command.
+I simulated three distinct attack vectors on the Ubuntu endpoint:
+* **Network Reconnaissance:** `sudo nmap -A -T4 localhost`
+* **Credential Dumping:** `sudo python3 laZagne.py all`
+* **Persistence:** `sudo useradd -m hacker-backdoor`
 
-**Evidence:** Each of these actions was captured in the LimaCharlie **Timeline** as raw telemetry (`NEW_PROCESS` events).
-
-Lazagne in limaCharlie timeline
-![Terminal LaZagne execution and LimaCharlie Timeline](images/lazagne_timeline.png)
-
-Nmap in limaCharlie timeline
-![Terminal LaZagne execution and LimaCharlie Timeline](images/limacharlie_timeline_nmap.png)
-
-Backdoor user in limacharlie timeline
-![Terminal LaZagne execution and LimaCharlie Timeline](images/timeline_backdoor_user.png)
+**Telemetry Evidence (LimaCharlie Timeline):**
+![LaZagne Timeline](images/lazagne_timeline.png)
+![Nmap Timeline](images/limacharlie_timeline_nmap.png)
+![User Timeline](images/timeline_backdoor_user.png)
 
 ### 2. Detection & Webhook Trigger
-I engineered custom **Detection & Response (D&R) Rules** to identify these patterns. Once the criteria were met, the events were promoted from raw telemetry to the **Detections** tab.
-* **Rules Implemented:** 1. `Nmap Scan Detection` 
-    2. `LaZagne Execution Filter` 
-    3. `Unauthorized User Persistence`
-  *Nmap D & R rule*
-  ![LimaCharlie Detections rule Tab](images/nmap_scan_dnr_rule.png)
+I engineered custom **Detection & Response (D&R) Rules** to promote these events to detections.
 
-  *LaZagne D & R rule*
-  ![LimaCharlie Detections rule Tab](images/lazagne_detection_rule.png)
+**Rules Implemented:**
+* `Nmap Scan Detection` ![Nmap Rule](images/nmap_scan_dnr_rule.png)
+* `LaZagne Execution Filter` ![LaZagne Rule](images/lazagne_detection_rule.png)
+* `Unauthorized User Persistence` ![User Rule](images/backdoor_user_dnr_rule.png)
 
-  *User Persistence D & R rule*
-  ![LimaCharlie Detections rule Tab](images/backdoor_user_dnr_rule.png)
-* **Action:** Upon detection, LimaCharlie automatically packaged the event metadata into a JSON payload and forwarded it to the Tines webhook for orchestration.
+**Detections Triggered:**
+![Nmap Detection](images/detection_nmap.png)
+![LaZagne Detection](images/detection_python_lazagne.png)
+![User Persistence Detection](images/detection_userbackdoor.png)
 
-**Nmap Detection**
-![LimaCharlie Detections Tab](images/detection_nmap.png)
-
-**LaZagne Detection**
-![LimaCharlie Detections Tab](images/detection_python_lazagne.png)
-
-**User Persistence Detection**
-![LimaCharlie Detections Tab](images/detection_userbackdoor.png)
+## 🎯 MITRE ATT&CK Mapping
+* **Credential Dumping:** T1555 (LaZagne)
+* **Network Service Discovery:** T1046 (Nmap)
+* **Persistence via Account Creation:** T1136
 
 ### 3. SOAR Orchestration & SOC Notification
-Once the payload reached **Tines**, the workflow queried the **VirusTotal API**. Since these simulated activities (like a custom Nmap scan or a local LaZagne build) often return an "Unknown" status (404), the story branched to the **Tier 2** manual review path.
-* **Result:** A formatted alert was sent to the SOC via Slack and Email.
-* **Analyst Action:** I utilized the **Interactive Decision Page** to review the enriched data and manually trigger host isolation where necessary.
+Tines queried VirusTotal. For simulated/unknown activity (404), the story branched to Tier 2.
 
-*Tines story 404 unknown status
-![Tines Story Flow and Slack/Email Alert](images/tines_story_unknown.png)
-![Tines Story Flow and Slack/Email Alert](images/tines_story_unknow2.png)
+**Tines Logic & Decision Page:**
+![Tines Story 1](images/tines_story_unknown.png)
+![Tines Story 2](images/tines_story_unknow2.png)
+![Analyst Decision Page](images/Tines_interactive_page.png)
 
-**The Analyst Decision Page (Action):**
-![Tines Interactive Page](images/Tines_interactive_page.png)
-*This is the custom interface I built where the analyst makes the final call on remediation.*
-
-**The Slack Notification (Communication):**
+**Slack Notification:**
 ![Slack Alert](images/slack_alert_unknown_lazagne.png)
-*The alert includes high-level details and a direct link to the detection page in limaCharlie.*
 
 ---
 
 ## 🧪 Specialized Logic & Unit Testing
 
-Beyond standard alerting, I performed specific "Unit Tests" to verify the advanced automated paths.
-
 ### 🔴 Case Study: Automated Remediation (Known Malicious)
-To validate the **Auto-Isolation** trigger, I used an **Event Transform** node to simulate a high-threat scenario by injecting a known-malicious file hash.
-
-*Event Transform node for malicious test*
+I used an **Event Transform** node to inject a known-malicious hash and verify the Tier 1 path.
 ![Event Transform Node](images/event_transform_node.png)
 
-* **The Result:** The VirusTotal score exceeded the threshold (> 3), and Tines immediately executed the **isolate** command via the LimaCharlie API.
-
-*Slack isolation alert*
-![Slack Auto Isolate Alert](images/slack_alert_for_auto_isolate.png)
+* **Result:** Tines immediately executed the **isolate** command.
+![Slack Auto Isolate](images/slack_alert_for_auto_isolate.png)
 
 **Proof of Isolation:**
-![LimaCharlie Sensor Isolated Status](images/sensor_isolated.png)
-*LimaCharlie UI confirming the 'Isolate Network' command was successful.*
-
+![LimaCharlie Sensor Status](images/sensor_isolated.png)
 ![Ubuntu Ping Test Failure](images/nmap_failed_server_isolated.png)
-*Post-isolation connectivity test: Pinging google.com results in 'Operation not permitted,' confirming the host is quarantined.*
+*Post-isolation: Pinging google.com results in 'Operation not permitted', confirming quarantine.*
 
 ### 🟢 Case Study: False Positive Mitigation (Known Clean)
-I tested the workflow against the `gpgconf` utility to ensure the system doesn't disrupt legitimate work.
-* **The Result:** VirusTotal returned a score of 0. The system flagged the event as "Clean" and logged it for visibility without isolation.
-
-*Slack alert after VT scan (hash found but not malicious)*
-![Clean hash slack alert](images/clean_vt_scan_slack_alert.png)
-
-*Email alert after VT scan (hash found but not malicious)*
-![Clean hash email alert](images/clean_vt_status_email_alert.png)
+Tested against `gpgconf` to ensure legitimate work continues.
+* **Result:** VT Score 0. System flagged as "Clean" and logged without isolation.
+![Clean Slack Alert](images/clean_vt_scan_slack_alert.png)
+![Clean Email Alert](images/clean_vt_status_email_alert.png)
 
 ---
 
 ## 🛠️ Technical Challenges & Troubleshooting
-
-During the development of this SOC automation lab, I encountered and resolved several technical hurdles:
-
-* **Handling VirusTotal 404 Status:** * **Issue:** The workflow would fail when a file hash was not found in VirusTotal.
-    * **Resolution:** I implemented conditional logic to catch 404 status codes. These are now routed to the "Manual Review" path rather than allowing the process to fail.
-* **JSON Path Mapping:** * **Issue:** Extracting the correct file hash from the complex LimaCharlie telemetry object.
-    * **Resolution:** Used Tines **Events logs** to trace the incoming JSON and correctly mapped the path `{{ .event.target.FILE_HASH }}`.
+* **Handling VirusTotal 404 Status:** Implemented conditional logic to interpret "Not Found" as "Unknown," routing them to analysts rather than allowing the playbook to error out.
+* **JSON Path Mapping:** Debugged complex LimaCharlie telemetry objects using Tines events logs to correctly map `{{ .event.target.FILE_HASH }}` for API queries.
 
 ---
 
 ## 🏁 Conclusion
-This lab demonstrates the power of SOAR in modern security operations. By automating response for "known bad" threats and filtering "known good" activity, the manual workload for the SOC is significantly reduced, allowing analysts to focus on complex, unknown security events.
-
+This lab demonstrates the power of SOAR. By automating response for "known bad" threats and filtering "known good" activity, I reduced the manual workload for the SOC, allowing focus on complex, unknown security events.
