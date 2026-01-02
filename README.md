@@ -30,5 +30,3 @@ With the integration of the VirusTotal API, the Tines workflow now follows a thr
     * **Action:** No isolation.
     * **Notification:** The SOC is alerted with a "Clean" status for visibility. 
     * **Fallback:** If the analyst determines the activity is a **Zero-Day** or **False Negative** upon manual review, they retain the option to trigger isolation via the manual prompt.
-    * **Notification:** The SOC is alerted with a "Clean" status for visibility. 
-    * **Fallback:** If the analyst determines the activity is a **Zero-Day** or **False Negative** upon manual review, they retain the option to trigger isolation via the manual prompt.
