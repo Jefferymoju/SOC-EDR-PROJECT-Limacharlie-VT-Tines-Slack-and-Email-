@@ -90,7 +90,6 @@ Once the payload reached **Tines**, the workflow queried the **VirusTotal API**.
 *This is the custom interface I built where the analyst makes the final call on remediation.*
 
 **The Slack Notification (Communication):**
-![Slack Alert](images/slack_alert_isolate_yes.png)
 ![Slack Alert](images/slack_unknown_status_alert_lazagne.png)
 *The alert includes high-level details and a direct link to the detection page in limaCharlie.*
 
