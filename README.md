@@ -68,13 +68,13 @@ I engineered custom **Detection & Response (D&R) Rules** to identify these patte
 * **Action:** Upon detection, LimaCharlie automatically packaged the event metadata into a JSON payload and forwarded it to the Tines webhook for orchestration.
 
 **Nmap Detection**
-![LimaCharlie Detections Tab](images/new_user_detected_limacharlie.png)
+![LimaCharlie Detections Tab](images/detection_nmap.png)
 
 **LaZagne Detection**
-![LimaCharlie Detections Tab](images/lazagne_detection.png)
+![LimaCharlie Detections Tab](images/detection_python_lazagne.png)
 
 **User Persistence Detection**
-![LimaCharlie Detections Tab](images/new_user_detected_limacharlie.png)
+![LimaCharlie Detections Tab](images/detection_userbackdoor.png)
 
 ### 3. SOAR Orchestration & SOC Notification
 Once the payload reached **Tines**, the workflow queried the **VirusTotal API**. Since these simulated activities (like a custom Nmap scan or a local LaZagne build) often return an "Unknown" status (404), the story branched to the **Tier 2** manual review path.
