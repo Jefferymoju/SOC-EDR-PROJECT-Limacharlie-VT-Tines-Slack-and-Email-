@@ -38,7 +38,7 @@ To demonstrate the end-to-end pipeline, I developed and tested three custom dete
 ### 1. The Trigger & EDR Ingestion
 I simulated three distinct attack vectors on the Ubuntu endpoint to ensure the LimaCharlie agent was capturing the necessary telemetry:
 * **Network Reconnaissance:** Executed `sudo nmap -A -T4 localhost`.
-* **Credential Dumping:** Executed the **LaZagne** binary `python 3 laZagne.py all`.
+* **Credential Dumping:** Executed the **LaZagne** binary `sudo python3 laZagne.py all`.
 * **Persistence:** Created a backdoor account using the `sudo useradd -m hacker-backdoor` command.
 
 **Evidence:** Each of these actions was captured in the LimaCharlie **Timeline** as raw telemetry (`NEW_PROCESS` events).
@@ -57,16 +57,42 @@ I engineered custom **Detection & Response (D&R) Rules** to identify these patte
 * **Rules Implemented:** 1. `Nmap Scan Detection` 
     2. `LaZagne Execution Filter` 
     3. `Unauthorized User Persistence`
+  *Nmap D & R rule*
+  ![LimaCharlie Detections rule Tab](images/nmap_scan_dnr_rule.png)
+
+  *LaZagne D & R rule*
+  ![LimaCharlie Detections rule Tab](images/lazagne_detection_rule.png)
+
+  *User Persistence D & R rule*
+  ![LimaCharlie Detections rule Tab](images/backdoor_user_dnr_rule.png)
 * **Action:** Upon detection, LimaCharlie automatically packaged the event metadata into a JSON payload and forwarded it to the Tines webhook for orchestration.
 
-![LimaCharlie Detections Tab](images/detections_tab.png)
+**Nmap Detection**
+![LimaCharlie Detections Tab](images/new_user_detected_limacharlie.png)
+
+**LaZagne Detection**
+![LimaCharlie Detections Tab](images/lazagne_detection.png)
+
+**User Persistence Detection**
+![LimaCharlie Detections Tab](images/new_user_detected_limacharlie.png)
 
 ### 3. SOAR Orchestration & SOC Notification
 Once the payload reached **Tines**, the workflow queried the **VirusTotal API**. Since these simulated activities (like a custom Nmap scan or a local LaZagne build) often return an "Unknown" status (404), the story branched to the **Tier 2** manual review path.
 * **Result:** A formatted alert was sent to the SOC via Slack and Email.
 * **Analyst Action:** I utilized the **Interactive Decision Page** to review the enriched data and manually trigger host isolation where necessary.
 
-![Tines Story Flow and Slack/Email Alert](images/tines_slack_alert.png)
+*Tines story 404 unknown status
+![Tines Story Flow and Slack/Email Alert](images/tines_story_unknown.png)
+![Tines Story Flow and Slack/Email Alert](images/tines_story_unknow2.png)
+
+**The Analyst Decision Page (Action):**
+![Tines Interactive Page](images/user_prompt_isolate?2.png)
+*This is the custom interface I built where the analyst makes the final call on remediation.*
+
+**The Slack Notification (Communication):**
+![Slack Alert](images/slack_alert_isolate_yes.png)
+![Slack Alert](images/slack_unknown_status_alert_lazagne.png)
+*The alert includes high-level details and a direct link to the detection page in limaCharlie.*
 
 ---
 
