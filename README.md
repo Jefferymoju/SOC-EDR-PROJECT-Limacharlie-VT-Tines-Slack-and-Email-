@@ -97,18 +97,49 @@ Once the payload reached **Tines**, the workflow queried the **VirusTotal API**.
 
 ## 🧪 Specialized Logic & Unit Testing
 
-Beyond standard alerting, I performed specific "Unit Tests" to verify the advanced automated paths within the Tines logic.
+Beyond standard alerting, I performed specific "Unit Tests" to verify the advanced automated paths.
 
 ### 🔴 Case Study: Automated Remediation (Known Malicious)
-To validate the **Auto-Isolation** trigger, I used an **Event Transform** node to simulate a high-threat scenario.
-* **The Test:** I injected a known-malicious file hash into a detection payload.
-* **The Result:** The VirusTotal score exceeded the threshold (> 3), and Tines immediately executed the **isolate** command via the LimaCharlie API. The SOC received a confirmation that the threat was mitigated automatically.
+To validate the **Auto-Isolation** trigger, I used an **Event Transform** node to simulate a high-threat scenario by injecting a known-malicious file hash.
+
+*Event Transform node for malicious test*
+![Event Transform Node](images/event_transform_node.png)
+
+* **The Result:** The VirusTotal score exceeded the threshold (> 3), and Tines immediately executed the **isolate** command via the LimaCharlie API.
+
+*Slack isolation alert*
+![Slack Auto Isolate Alert](images/slack_alert_for_auto_isolate.png)
+
+**Proof of Isolation:**
+![LimaCharlie Sensor Isolated Status](images/sensor_isolated.png)
+*LimaCharlie UI confirming the 'Isolate Network' command was successful.*
+
+![Ubuntu Ping Test Failure](images/nmap_failed_server_isolated.png)
+*Post-isolation connectivity test: Pinging google.com results in 'Operation not permitted,' confirming the host is quarantined.*
 
 ### 🟢 Case Study: False Positive Mitigation (Known Clean)
-I tested the workflow against the `gpgconf` utility to ensure the system doesn't disrupt legitimate administrative work.
-* **The Test:** Processed a process event for `/usr/bin/gpgconf`.
-* **The Result:** VirusTotal returned a score of 0. The system flagged the event as "Clean" and logged it for visibility without prompting for isolation, successfully preventing a False Positive.
+I tested the workflow against the `gpgconf` utility to ensure the system doesn't disrupt legitimate work.
+* **The Result:** VirusTotal returned a score of 0. The system flagged the event as "Clean" and logged it for visibility without isolation.
 
-![Logic Testing Results](images/unit_testing_results.png)
+*Slack alert after VT scan (hash found but not malicious)*
+![Clean hash slack alert](images/clean_vt_scan_slack_alert.png)
 
+*Email alert after VT scan (hash found but not malicious)*
+![Clean hash email alert](images/clean_vt_status_email_alert.png)
+
+---
+
+## 🛠️ Technical Challenges & Troubleshooting
+
+During the development of this SOC automation lab, I encountered and resolved several technical hurdles:
+
+* **Handling VirusTotal 404 Status:** * **Issue:** The workflow would fail when a file hash was not found in VirusTotal.
+    * **Resolution:** I implemented conditional logic to catch 404 status codes. These are now routed to the "Manual Review" path rather than allowing the process to fail.
+* **JSON Path Mapping:** * **Issue:** Extracting the correct file hash from the complex LimaCharlie telemetry object.
+    * **Resolution:** Used Tines **Events logs** to trace the incoming JSON and correctly mapped the path `{{ .event.target.FILE_HASH }}`.
+
+---
+
+## 🏁 Conclusion
+This lab demonstrates the power of SOAR in modern security operations. By automating response for "known bad" threats and filtering "known good" activity, the manual workload for the SOC is significantly reduced, allowing analysts to focus on complex, unknown security events.
 
