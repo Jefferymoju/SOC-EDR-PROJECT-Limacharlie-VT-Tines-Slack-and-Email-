@@ -86,7 +86,7 @@ Once the payload reached **Tines**, the workflow queried the **VirusTotal API**.
 ![Tines Story Flow and Slack/Email Alert](images/tines_story_unknow2.png)
 
 **The Analyst Decision Page (Action):**
-![Tines Interactive Page](images/user_prompt_isolate?2.png)
+![Tines Interactive Page](images/Tines_interactive_page.png)
 *This is the custom interface I built where the analyst makes the final call on remediation.*
 
 **The Slack Notification (Communication):**
